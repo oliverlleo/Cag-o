@@ -16,7 +16,7 @@
         body { 
             touch-action: none; 
             overflow: hidden; 
-            background-color: #1a1a1a; /* Fundo cinza escuro caso tudo falhe */
+            background-color: #1a1a1a; 
             margin: 0;
             padding: 0;
         }
@@ -67,10 +67,10 @@
         const IconClock = ({size}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
 
         const ERAS = [
-            { id: 0, name: "Pré-História", description: "Mato e pedra.", color: "bg-green-900", textColor: "text-green-100", buttonColor: "bg-green-600", icon: <IconLeaf size={64} />, bgPattern: "opacity-10 custom-bg-pattern-leaf", multiplier: 1, cost: 0 },
-            { id: 1, name: "Idade Média", description: "Trono de madeira.", color: "bg-amber-900", textColor: "text-amber-100", buttonColor: "bg-amber-700", icon: <IconCastle size={64} />, bgPattern: "opacity-10 custom-bg-pattern-stone", multiplier: 5, cost: 1500 },
-            { id: 2, name: "Era Moderna", description: "Porcelana fria.", color: "bg-blue-700", textColor: "text-blue-100", buttonColor: "bg-blue-500", icon: <IconHome size={64} />, bgPattern: "opacity-10 custom-bg-pattern-tile", multiplier: 25, cost: 50000 },
-            { id: 3, name: "Futuro", description: "Gravidade zero.", color: "bg-purple-900", textColor: "text-purple-100", buttonColor: "bg-fuchsia-600", icon: <IconCpu size={64} />, bgPattern: "opacity-20 custom-bg-pattern-stars", multiplier: 100, cost: 1000000 }
+            { id: 0, name: "Pré-História", description: "Mato e pedra.", color: "bg-green-900/80", textColor: "text-green-100", buttonColor: "bg-green-600", icon: <IconLeaf size={64} />, bgPattern: "opacity-10 custom-bg-pattern-leaf", multiplier: 1, cost: 0 },
+            { id: 1, name: "Idade Média", description: "Trono de madeira.", color: "bg-amber-900/80", textColor: "text-amber-100", buttonColor: "bg-amber-700", icon: <IconCastle size={64} />, bgPattern: "opacity-10 custom-bg-pattern-stone", multiplier: 5, cost: 1500 },
+            { id: 2, name: "Era Moderna", description: "Porcelana fria.", color: "bg-blue-700/80", textColor: "text-blue-100", buttonColor: "bg-blue-500", icon: <IconHome size={64} />, bgPattern: "opacity-10 custom-bg-pattern-tile", multiplier: 25, cost: 50000 },
+            { id: 3, name: "Futuro", description: "Gravidade zero.", color: "bg-purple-900/80", textColor: "text-purple-100", buttonColor: "bg-fuchsia-600", icon: <IconCpu size={64} />, bgPattern: "opacity-20 custom-bg-pattern-stars", multiplier: 100, cost: 1000000 }
         ];
 
         const UPGRADE_DEFS = [
@@ -84,11 +84,12 @@
             { id: 8, name: "Teleporte", type: "auto", basePower: 20, baseCost: 100000, costMult: 1.6, eraReq: 3, icon: <IconRocket size={16}/> },
         ];
 
+        // CORREÇÃO: Usando a extensão .png como solicitado
         const IMAGES = {
-            inicio: 'inicio.jpg',
-            forca: 'forca.jpg',
-            quase: 'quase.jpg',
-            alivio: 'alivio.jpg'
+            inicio: 'inicio.png',
+            forca: 'forca.png',
+            quase: 'quase.png',
+            alivio: 'alivio.png'
         };
 
         function ToiletEvolution() {
@@ -105,11 +106,13 @@
             const [floatText, setFloatText] = useState([]);
             const [shake, setShake] = useState(false);
 
+            // Imagem e Hold
             const [currentImage, setCurrentImage] = useState(IMAGES.inicio);
             const [isHolding, setIsHolding] = useState(false);
             const isHoldingRef = useRef(false);
             const holdTimerRef = useRef(null);
 
+            // Ritmo Refs
             const [rhythmVisualScale, setRhythmVisualScale] = useState(2.2); 
             const rhythmScaleRef = useRef(2.2); 
             const rhythmActiveRef = useRef(false);
@@ -129,7 +132,7 @@
             const currentEra = ERAS[eraIndex];
             const nextEra = ERAS[eraIndex + 1];
 
-            // Stats
+            // Cálculo Stats
             useEffect(() => {
                 let clickP = 1; 
                 let autoP = 0;
@@ -144,6 +147,7 @@
                 setAutoRate(autoP);
             }, [ownedUpgrades]);
 
+            // Spawn Text
             const spawnFloatText = (text, x, y, type = 'neutral') => {
                 const id = floatTextCounter.current++;
                 setFloatText(prev => [...prev, { id, text, x, y, type }]);
@@ -152,6 +156,7 @@
                 }, 1000);
             };
 
+            // Lógica de Velocidade
             const getNextDynamicSpeed = (currentCombo) => {
                 const BASE_SPEED = 1.2; 
                 let chaosChance = 0.05; 
@@ -179,9 +184,9 @@
                 return BASE_SPEED;
             };
 
-            // Load
+            // Load/Save
             useEffect(() => {
-                const saved = localStorage.getItem('toilet-evo-fixed-blackscreen');
+                const saved = localStorage.getItem('toilet-evo-html-final-clean');
                 if (saved) {
                     try {
                         const data = JSON.parse(saved);
@@ -190,14 +195,13 @@
                             setEraIndex(data.eraIndex || 0);
                             setOwnedUpgrades(data.ownedUpgrades || {});
                         }
-                    } catch (e) { }
+                    } catch (e) { console.error("Save error"); }
                 }
             }, []);
 
-            // Save
             useEffect(() => {
                 const data = { coins, eraIndex, ownedUpgrades };
-                localStorage.setItem('toilet-evo-fixed-blackscreen', JSON.stringify(data));
+                localStorage.setItem('toilet-evo-html-final-clean', JSON.stringify(data));
             }, [coins, eraIndex, ownedUpgrades]);
 
             const scheduleNextRhythm = () => {
@@ -292,7 +296,7 @@
 
                 loopRef.current = requestAnimationFrame(gameLoop);
                 return () => cancelAnimationFrame(loopRef.current);
-            }, [autoRate, currentEra, isJammed, rhythmWarning, comboMultiplier]);
+            }, [autoRate, isJammed, rhythmWarning]); // Deps reduzidas
 
             useEffect(() => {
                 if (relief >= 100) {
@@ -308,7 +312,7 @@
             const checkRhythmHit = () => {
                 const s = rhythmScaleRef.current;
                 
-                // Hitbox Visual Exata
+                // HITBOX GEOMÉTRICA EXATA
                 const TOO_EARLY_LIMIT = 1.08; 
                 const TOO_LATE_LIMIT = 0.77;  
                 
@@ -340,6 +344,7 @@
             };
 
             const handlePush = (e) => {
+                // Impede o clique se tiver tocando na loja
                 if (e.target.closest('.shop-container')) return;
 
                 const now = Date.now();
@@ -363,15 +368,18 @@
 
                         currentClickMult = parseFloat((comboMultiplier + 0.1).toFixed(1)); 
                         strainGain = -5;
+                        
                         setShake(true);
                         setTimeout(() => setShake(false), 100);
                     } else {
                         strainGain = 10; 
                     }
                 } else {
-                    if (timeDelta < 150) strainGain = 8;
-                    else if (timeDelta < 400) strainGain = 2; 
-                    else {
+                    if (timeDelta < 150) { 
+                        strainGain = 8;
+                    } else if (timeDelta < 400) {
+                        strainGain = 2; 
+                    } else {
                         strainGain = 0; 
                         if (timeDelta > 700) strainGain = -2; 
                     }
@@ -403,7 +411,6 @@
 
             const startHold = (e) => {
                 if (e.target.closest('.shop-container')) return;
-                
                 handlePush(e);
                 setCurrentImage(IMAGES.forca);
 
@@ -424,6 +431,7 @@
                 
                 setCurrentImage(IMAGES.quase);
                 setTimeout(() => {
+                    // Só volta se não estiver completando
                     setCurrentImage(prev => prev === IMAGES.alivio ? IMAGES.alivio : IMAGES.inicio);
                 }, 500); 
             };
@@ -464,9 +472,9 @@
             };
 
             return (
-                <div className={`w-full h-screen flex flex-col font-sans select-none relative text-white ${currentEra.color}`}>
+                <div className={`w-full h-screen overflow-hidden flex flex-col font-sans select-none transition-colors duration-1000 relative text-white ${currentEra.color}`}>
                     
-                    {/* Background Image Container */}
+                    {/* BACKGROUND IMAGE */}
                     <div className="absolute inset-0 z-0">
                         {/* Se a imagem carregar, mostra ela */}
                         <img 
@@ -477,11 +485,11 @@
                                 e.target.style.display = 'none'; // Esconde se quebrar
                             }}
                         />
-                        {/* Se a imagem falhar, este fundo colorido aparece */}
+                        {/* Fundo colorido de fallback sempre presente atrás */}
                         <div className={`absolute inset-0 ${currentEra.color} -z-10`}></div>
                     </div>
 
-                    {/* OVERLAYS (Mistura de cor para dar o tom da era) */}
+                    {/* OVERLAYS */}
                     <div className={`absolute inset-0 z-0 pointer-events-none mix-blend-multiply ${currentEra.color} opacity-60 transition-colors duration-1000`}></div>
                     <div className={`absolute inset-0 pointer-events-none z-0 ${currentEra.bgPattern} opacity-20`}></div>
 
@@ -499,7 +507,7 @@
                         </div>
                     </div>
 
-                    {/* MULTIPLIER */}
+                    {/* MULTIPLIER DISPLAY */}
                     <div className={`absolute top-20 right-4 z-50 transition-all duration-300 ${comboMultiplier > 1.0 ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}>
                         <div className="bg-black/60 backdrop-blur border-2 border-yellow-400 rounded-lg px-4 py-2 flex flex-col items-center shadow-lg animate-pulse">
                             <span className="text-[10px] text-yellow-200 uppercase font-bold tracking-widest flex items-center gap-1"><IconMusic size={10}/> Ritmo</span>
@@ -556,14 +564,14 @@
                             </div>
                         </div>
 
-                        {/* TOUCH ZONE (INVISIBLE) */}
+                        {/* TOUCH AREA (INVISIBLE) */}
                         <div
                             onMouseDown={startHold}
                             onTouchStart={startHold}
                             onMouseUp={endHold}
                             onMouseLeave={endHold}
                             onTouchEnd={endHold}
-                            className="absolute inset-0 top-20 bottom-1/3 z-30 cursor-pointer outline-none touch-manipulation"
+                            className="absolute inset-0 top-20 bottom-1/3 z-30 cursor-pointer outline-none touch-manipulation bg-transparent"
                             style={{ WebkitTapHighlightColor: 'transparent' }}
                         >
                             {rhythmWarning && <div className="absolute top-[40%] left-0 right-0 text-center text-yellow-300 font-bold text-2xl animate-pulse pointer-events-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">RITMO!</div>}
@@ -575,7 +583,7 @@
                         </div>
                     </div>
 
-                    {/* SHOP */}
+                    {/* LOJA */}
                     <div className="h-1/3 bg-black/60 backdrop-blur-md rounded-t-3xl border-t border-white/10 flex flex-col overflow-hidden z-40 shop-container">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center sticky top-0 bg-black/40 backdrop-blur z-20 text-white">
                             <h2 className="font-bold flex items-center gap-2"><IconTrophy size={18}/> Loja</h2>
