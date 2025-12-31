@@ -84,7 +84,6 @@
             { id: 8, name: "Teleporte", type: "auto", basePower: 20, baseCost: 100000, costMult: 1.6, eraReq: 3, icon: <IconRocket size={16}/> },
         ];
 
-        // CONFIGURAÇÃO DAS IMAGENS
         const IMAGES = {
             inicio: 'inicio.png',
             forca: 'forca.png',
@@ -109,6 +108,7 @@
             // Imagem e Hold
             const [currentImage, setCurrentImage] = useState(IMAGES.inicio);
             const [isHolding, setIsHolding] = useState(false);
+            const [sessionDone, setSessionDone] = useState(false); // TRAVA DE SESSÃO
             const isHoldingRef = useRef(false);
             const holdTimerRef = useRef(null);
 
@@ -132,7 +132,7 @@
             const currentEra = ERAS[eraIndex];
             const nextEra = ERAS[eraIndex + 1];
 
-            // Cálculo Stats
+            // Stats
             useEffect(() => {
                 let clickP = 1; 
                 let autoP = 0;
@@ -147,7 +147,6 @@
                 setAutoRate(autoP);
             }, [ownedUpgrades]);
 
-            // Spawn Text
             const spawnFloatText = (text, x, y, type = 'neutral') => {
                 const id = floatTextCounter.current++;
                 setFloatText(prev => [...prev, { id, text, x, y, type }]);
@@ -156,7 +155,6 @@
                 }, 1000);
             };
 
-            // Lógica de Velocidade
             const getNextDynamicSpeed = (currentCombo) => {
                 const BASE_SPEED = 1.2; 
                 let chaosChance = 0.05; 
@@ -184,9 +182,8 @@
                 return BASE_SPEED;
             };
 
-            // Load/Save
             useEffect(() => {
-                const saved = localStorage.getItem('toilet-evo-html-final-clean-v2');
+                const saved = localStorage.getItem('toilet-evo-html-final-clean-v3');
                 if (saved) {
                     try {
                         const data = JSON.parse(saved);
@@ -195,13 +192,13 @@
                             setEraIndex(data.eraIndex || 0);
                             setOwnedUpgrades(data.ownedUpgrades || {});
                         }
-                    } catch (e) { console.error("Save error"); }
+                    } catch (e) { }
                 }
             }, []);
 
             useEffect(() => {
                 const data = { coins, eraIndex, ownedUpgrades };
-                localStorage.setItem('toilet-evo-html-final-clean-v2', JSON.stringify(data));
+                localStorage.setItem('toilet-evo-html-final-clean-v3', JSON.stringify(data));
             }, [coins, eraIndex, ownedUpgrades]);
 
             const scheduleNextRhythm = () => {
@@ -233,7 +230,6 @@
                 if (resetCombo) setComboMultiplier(1.0);
             };
 
-            // Game Loop
             useEffect(() => {
                 const gameLoop = () => {
                     const now = Date.now();
@@ -270,7 +266,6 @@
                             rhythmScaleRef.current -= (currentSpeedRef.current * dt);
                             setRhythmVisualScale(rhythmScaleRef.current);
 
-                            // HITBOX (Tarde demais)
                             if (rhythmScaleRef.current <= 0.76) { 
                                 handleRhythmMiss("TARDE!");
                             }
@@ -296,8 +291,9 @@
 
                 loopRef.current = requestAnimationFrame(gameLoop);
                 return () => cancelAnimationFrame(loopRef.current);
-            }, [autoRate, isJammed, rhythmWarning]); // Deps reduzidas
+            }, [autoRate, isJammed, rhythmWarning]);
 
+            // AUTO-COMPLETE CHECK
             useEffect(() => {
                 if (relief >= 100) {
                     completeSession(1.0); 
@@ -311,8 +307,6 @@
 
             const checkRhythmHit = () => {
                 const s = rhythmScaleRef.current;
-                
-                // HITBOX GEOMÉTRICA EXATA
                 const TOO_EARLY_LIMIT = 1.08; 
                 const TOO_LATE_LIMIT = 0.77;  
                 
@@ -344,7 +338,6 @@
             };
 
             const handlePush = (e) => {
-                // Impede o clique se tiver tocando na loja
                 if (e.target.closest('.shop-container')) return;
 
                 const now = Date.now();
@@ -368,18 +361,15 @@
 
                         currentClickMult = parseFloat((comboMultiplier + 0.1).toFixed(1)); 
                         strainGain = -5;
-                        
                         setShake(true);
                         setTimeout(() => setShake(false), 100);
                     } else {
                         strainGain = 10; 
                     }
                 } else {
-                    if (timeDelta < 150) { 
-                        strainGain = 8;
-                    } else if (timeDelta < 400) {
-                        strainGain = 2; 
-                    } else {
+                    if (timeDelta < 150) strainGain = 8;
+                    else if (timeDelta < 400) strainGain = 2; 
+                    else {
                         strainGain = 0; 
                         if (timeDelta > 700) strainGain = -2; 
                     }
@@ -412,6 +402,14 @@
             const startHold = (e) => {
                 if (e.target.closest('.shop-container')) return;
                 
+                // Se a sessão acabou (está em alivio.png), o clique reseta
+                if (sessionDone) {
+                    setSessionDone(false); // Destrava
+                    setCurrentImage(IMAGES.forca); // Começa novo ciclo
+                    // Reinicia barras se quiser resetar pressão/alivio manualmente aqui, mas completeSession já zerou alivio.
+                    return;
+                }
+
                 handlePush(e);
                 setCurrentImage(IMAGES.forca);
 
@@ -430,22 +428,23 @@
                 setIsHolding(false);
                 isHoldingRef.current = false;
                 
-                // MUDANÇA DE LÓGICA: Seta 'quase.png' e NÃO volta para 'inicio.png'
-                // 'inicio.png' morre aqui.
-                setCurrentImage(IMAGES.quase);
+                // Só muda para 'quase' se a sessão NÃO estiver terminada.
+                // Se estiver terminada (alivio.png), mantém alivio.png
+                if (!sessionDone) {
+                    setCurrentImage(IMAGES.quase);
+                }
             };
 
             const completeSession = (finalMult) => {
-                setRelief(0);
+                setRelief(0); // Zera barra
                 const baseReward = 10;
                 const reward = baseReward * currentEra.multiplier * finalMult;
                 setCoins(prev => prev + reward);
                 
-                setCurrentImage(IMAGES.alivio);
-                setTimeout(() => {
-                    // Depois do alívio, volta para 'quase.png' (ciclo normal), não 'inicio.png'
-                    setCurrentImage(IMAGES.quase);
-                }, 1500);
+                // LÓGICA DE TRAVA:
+                setSessionDone(true); // Ativa trava
+                setCurrentImage(IMAGES.alivio); // Mostra alívio
+                // Removido setTimeout: A imagem fica até clicar de novo.
             };
 
             const buyUpgrade = (upgrade) => {
@@ -476,16 +475,12 @@
                     
                     {/* BACKGROUND IMAGE */}
                     <div className="absolute inset-0 z-0">
-                        {/* Se a imagem carregar, mostra ela */}
                         <img 
                             src={currentImage} 
                             alt=""
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                                e.target.style.display = 'none'; // Esconde se quebrar
-                            }}
+                            onError={(e) => { e.target.style.display = 'none'; }}
                         />
-                        {/* Fundo colorido de fallback sempre presente atrás */}
                         <div className={`absolute inset-0 ${currentEra.color} -z-10`}></div>
                     </div>
 
@@ -531,7 +526,6 @@
                         </div>
 
                         <div className="relative w-64 h-64 flex items-center justify-center mb-6">
-                            {/* RHYTHM RINGS */}
                             {rhythmActiveState && (
                                 <>
                                     <div className="absolute rounded-full border-white/40 z-0 shadow-[0_0_30px_10px_rgba(255,255,255,0.2)]" style={{ width: '208px', height: '208px', borderWidth: '24px', boxSizing: 'border-box' }}></div>
@@ -548,7 +542,6 @@
                             </div>
                         </div>
 
-                        {/* BARS */}
                         <div className="w-full max-w-xs space-y-3 mb-6">
                             <div className="relative">
                                 <div className="flex justify-between text-xs mb-1 font-bold opacity-80 text-white"><span>ALÍVIO</span><span>{Math.floor(relief)}%</span></div>
@@ -564,7 +557,7 @@
                             </div>
                         </div>
 
-                        {/* TOUCH AREA (INVISIBLE) */}
+                        {/* TOUCH AREA */}
                         <div
                             onMouseDown={startHold}
                             onTouchStart={startHold}
