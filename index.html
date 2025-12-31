@@ -68,7 +68,6 @@ const ERAS = [
   }
 ];
 
-// Definição segura dos upgrades fora do componente para não recriar a cada render
 const UPGRADE_DEFS = [
   { id: 1, name: "Folha de Bananeira", type: "click", basePower: 0.5, baseCost: 10, costMult: 1.5, eraReq: 0, icon: <Leaf size={16}/> },
   { id: 2, name: "Revista Velha", type: "auto", basePower: 0.2, baseCost: 50, costMult: 1.6, eraReq: 0, icon: <Scroll size={16}/> },
@@ -96,10 +95,13 @@ export default function ToiletEvolution() {
   const [floatText, setFloatText] = useState<{id: number, text: string, x: number, y: number, type: 'good' | 'bad' | 'neutral'}[]>([]);
   const [shake, setShake] = useState(false);
 
-  // --- STATE DO BOTÃO HOLD ---
+  // --- STATE DO BOTÃO HOLD E IMAGEM ---
   const [isHolding, setIsHolding] = useState(false);
   const isHoldingRef = useRef(false);
   const holdTimerRef = useRef<number | null>(null);
+  
+  // Estado para controlar qual imagem mostrar
+  const [currentImage, setCurrentImage] = useState('inicio.jpg');
 
   // --- RHYTHM MECHANIC STATE (REFS) ---
   const [rhythmVisualScale, setRhythmVisualScale] = useState(2.2); 
@@ -177,7 +179,6 @@ export default function ToiletEvolution() {
   // --- EFEITOS E LOOP ---
 
   useEffect(() => {
-    // MUDANÇA DE CHAVE PARA LIMPAR DADOS CORROMPIDOS (TELA BRANCA)
     const saved = localStorage.getItem('toilet-evo-v10_clean');
     if (saved) {
       try {
@@ -232,11 +233,9 @@ export default function ToiletEvolution() {
       const dt = (now - lastTimeRef.current) / 1000; 
       lastTimeRef.current = now;
 
-      // Proteção contra dt gigante (tab inativo)
       if (dt > 0.5) return;
 
       if (!isJammed) {
-        // Auto Alívio
         if (autoRate > 0) {
             const autoGain = autoRate * dt; 
             setRelief(prev => {
@@ -246,14 +245,12 @@ export default function ToiletEvolution() {
             });
         }
 
-        // Strain Decay (Pressão)
         let strainDecay = 20 * dt;
         if (isHoldingRef.current) {
-            strainDecay += 40 * dt; // Alívio extra segurando
+            strainDecay += 40 * dt; 
         }
         setStrain(prev => Math.max(0, prev - strainDecay));
 
-        // Rhythm Checks
         if (!rhythmActiveRef.current && !rhythmWarning && now > nextRhythmTriggerRef.current) {
           triggerWarning();
           nextRhythmTriggerRef.current = now + 999999;
@@ -263,8 +260,6 @@ export default function ToiletEvolution() {
           rhythmScaleRef.current -= (currentSpeedRef.current * dt);
           setRhythmVisualScale(rhythmScaleRef.current);
 
-          // LIMITE DE FALHA APERTADO
-          // Se menor que 0.82, já passou VISIVELMENTE da área segura.
           if (rhythmScaleRef.current <= 0.80) { 
              handleRhythmMiss("TARDE!");
           }
@@ -309,15 +304,6 @@ export default function ToiletEvolution() {
   const checkRhythmHit = () => {
       const s = rhythmScaleRef.current;
       
-      // --- HITBOX RESTRITIVA (SEM GORDURA) ---
-      // Para haver SOBREPOSIÇÃO VISUAL REAL (Overlap sólido):
-      // Alvo: [80, 104] (raios)
-      // Anel: [104*S - 8, 104*S]
-      
-      // Condição de toque sólido (não apenas raspão):
-      // 1.05 é o limite superior. Acima disso, mal tocou a borda de fora.
-      // 0.82 é o limite inferior. Abaixo disso, já está saindo pra dentro.
-      
       const TOO_EARLY_LIMIT = 1.05; 
       const TOO_LATE_LIMIT = 0.82;  
       
@@ -330,7 +316,6 @@ export default function ToiletEvolution() {
           return false;
       }
       
-      // ACERTOU
       rhythmScaleRef.current = 2.2;
       setRhythmVisualScale(2.2);
 
@@ -412,12 +397,13 @@ export default function ToiletEvolution() {
     });
   };
 
-  // --- HOLD HANDLERS (COM TIMER DE 300ms) ---
+  // --- HOLD HANDLERS (COM TIMER DE 300ms e Mudança de Imagem) ---
   const startHold = (e: React.MouseEvent | React.TouchEvent) => {
-      // 1. Processa o clique imediatamente (para jogar normal)
       handlePush(e);
+      
+      // Troca para imagem de força imediatamente ao apertar
+      setCurrentImage('forca.jpg');
 
-      // 2. Inicia o timer. Se o dedo ficar, vira HOLD.
       if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
       
       holdTimerRef.current = window.setTimeout(() => {
@@ -427,14 +413,21 @@ export default function ToiletEvolution() {
   };
 
   const endHold = () => {
-      // Se soltou antes de 300ms, cancela o timer (era só um tap)
       if (holdTimerRef.current) {
           clearTimeout(holdTimerRef.current);
           holdTimerRef.current = null;
       }
-      // Desliga o modo hold
       setIsHolding(false);
       isHoldingRef.current = false;
+      
+      // Ao soltar, muda para 'quase.jpg' e depois de um tempo volta para 'inicio.jpg'
+      setCurrentImage('quase.jpg');
+      setTimeout(() => {
+          // Só volta para inicio se não tiver completado o alívio (que mudaria para alivio.jpg)
+          if (relief < 100) {
+             setCurrentImage('inicio.jpg');
+          }
+      }, 500); // Fica 0.5s na imagem 'quase' antes de voltar
   };
 
   const completeSession = (finalMult: number) => {
@@ -442,6 +435,12 @@ export default function ToiletEvolution() {
     const baseReward = 10;
     const reward = baseReward * currentEra.multiplier * finalMult;
     setCoins(prev => prev + reward);
+    
+    // Mostra imagem de alívio e depois volta para inicio
+    setCurrentImage('alivio.jpg');
+    setTimeout(() => {
+        setCurrentImage('inicio.jpg');
+    }, 1500); // Fica 1.5s na imagem de alívio
   };
 
   const buyUpgrade = (upgrade: typeof UPGRADE_DEFS[0]) => {
@@ -560,19 +559,22 @@ export default function ToiletEvolution() {
               </>
           )}
 
-          {/* Avatar Central (FICA VERMELHO SÓ QUANDO ISHOLDING) */}
+          {/* Avatar Central (Agora usa as imagens) */}
           <div 
             className={`
-                relative w-40 h-40 rounded-full backdrop-blur-md flex items-center justify-center shadow-2xl border-4 border-white/20 z-10 transition-all duration-200
-                ${isHolding ? 'bg-red-600 shadow-[0_0_60px_rgba(239,68,68,0.9)] scale-95 border-red-400 animate-pulse' : 'bg-white/10 scale-100'}
+                relative w-40 h-40 rounded-full backdrop-blur-md flex items-center justify-center shadow-2xl border-4 border-white/20 z-10 transition-all duration-200 overflow-hidden
+                ${isHolding ? 'scale-95 border-red-400' : 'scale-100'}
                 ${isJammed ? 'grayscale opacity-50' : ''}
                 ${rhythmWarning ? 'animate-glow border-yellow-400' : ''}
                 ${rhythmActiveState ? 'border-white/50' : ''}
             `}
           >
-             <div className={`${isJammed ? 'text-red-500' : 'text-white'} drop-shadow-glow transform scale-150`}>
-                {currentEra.icon}
-             </div>
+             {/* Imagem do Personagem */}
+             <img 
+                 src={currentImage} 
+                 alt="Personagem" 
+                 className={`w-full h-full object-cover ${isJammed ? 'opacity-50' : ''}`}
+             />
              
              {isJammed && (
                 <div className="absolute inset-0 flex items-center justify-center">
