@@ -84,6 +84,7 @@
             { id: 8, name: "Teleporte", type: "auto", basePower: 20, baseCost: 100000, costMult: 1.6, eraReq: 3, icon: <IconRocket size={16}/> },
         ];
 
+        // IMAGENS (PNG)
         const IMAGES = {
             inicio: 'inicio.png',
             forca: 'forca.png',
@@ -108,7 +109,7 @@
             // Imagem e Hold
             const [currentImage, setCurrentImage] = useState(IMAGES.inicio);
             const [isHolding, setIsHolding] = useState(false);
-            const [sessionDone, setSessionDone] = useState(false); // TRAVA DE SESSÃO
+            const [sessionDone, setSessionDone] = useState(false); // TRAVA DE SUCESSO
             const isHoldingRef = useRef(false);
             const holdTimerRef = useRef(null);
 
@@ -182,8 +183,9 @@
                 return BASE_SPEED;
             };
 
+            // Load/Save
             useEffect(() => {
-                const saved = localStorage.getItem('toilet-evo-html-final-clean-v3');
+                const saved = localStorage.getItem('toilet-evo-html-final-clean-v4');
                 if (saved) {
                     try {
                         const data = JSON.parse(saved);
@@ -198,7 +200,7 @@
 
             useEffect(() => {
                 const data = { coins, eraIndex, ownedUpgrades };
-                localStorage.setItem('toilet-evo-html-final-clean-v3', JSON.stringify(data));
+                localStorage.setItem('toilet-evo-html-final-clean-v4', JSON.stringify(data));
             }, [coins, eraIndex, ownedUpgrades]);
 
             const scheduleNextRhythm = () => {
@@ -230,6 +232,7 @@
                 if (resetCombo) setComboMultiplier(1.0);
             };
 
+            // Game Loop
             useEffect(() => {
                 const gameLoop = () => {
                     const now = Date.now();
@@ -246,6 +249,7 @@
                             const autoGain = autoRate * dt; 
                             setRelief(prev => {
                                 const nextVal = prev + autoGain;
+                                // NÃO reseta para 0 aqui, deixa o useEffect do completeSession cuidar
                                 if (nextVal >= 100) return 100;
                                 return nextVal;
                             });
@@ -266,6 +270,7 @@
                             rhythmScaleRef.current -= (currentSpeedRef.current * dt);
                             setRhythmVisualScale(rhythmScaleRef.current);
 
+                            // HITBOX (Tarde demais)
                             if (rhythmScaleRef.current <= 0.76) { 
                                 handleRhythmMiss("TARDE!");
                             }
@@ -291,7 +296,7 @@
 
                 loopRef.current = requestAnimationFrame(gameLoop);
                 return () => cancelAnimationFrame(loopRef.current);
-            }, [autoRate, isJammed, rhythmWarning]);
+            }, [autoRate, isJammed, rhythmWarning]); // Deps reduzidas
 
             // AUTO-COMPLETE CHECK
             useEffect(() => {
@@ -307,6 +312,8 @@
 
             const checkRhythmHit = () => {
                 const s = rhythmScaleRef.current;
+                
+                // HITBOX GEOMÉTRICA EXATA
                 const TOO_EARLY_LIMIT = 1.08; 
                 const TOO_LATE_LIMIT = 0.77;  
                 
@@ -402,11 +409,12 @@
             const startHold = (e) => {
                 if (e.target.closest('.shop-container')) return;
                 
-                // Se a sessão acabou (está em alivio.png), o clique reseta
+                // --- LÓGICA DE RESET DE SESSÃO ---
                 if (sessionDone) {
-                    setSessionDone(false); // Destrava
-                    setCurrentImage(IMAGES.forca); // Começa novo ciclo
-                    // Reinicia barras se quiser resetar pressão/alivio manualmente aqui, mas completeSession já zerou alivio.
+                    // Clicou de novo depois do alívio? Reseta tudo.
+                    setSessionDone(false);
+                    setRelief(0); // Zera a barra aqui para o próximo ciclo
+                    setCurrentImage(IMAGES.forca);
                     return;
                 }
 
@@ -428,23 +436,26 @@
                 setIsHolding(false);
                 isHoldingRef.current = false;
                 
-                // Só muda para 'quase' se a sessão NÃO estiver terminada.
-                // Se estiver terminada (alivio.png), mantém alivio.png
+                // Só muda para 'quase.png' se NÃO estiver terminado (alivio.png)
+                // Se sessionDone for true, a imagem 'alivio.png' é PRESERVADA.
                 if (!sessionDone) {
                     setCurrentImage(IMAGES.quase);
                 }
             };
 
             const completeSession = (finalMult) => {
-                setRelief(0); // Zera barra
+                // NÃO ZERA O RELIEF AQUI PARA NÃO TRIGGERAR O EFFECT DE NOVO
+                // Deixa em 100 visualmente ou zera apenas internamente se precisar
+                // Mas a lógica de 'startHold' zera.
+                
                 const baseReward = 10;
                 const reward = baseReward * currentEra.multiplier * finalMult;
                 setCoins(prev => prev + reward);
                 
-                // LÓGICA DE TRAVA:
-                setSessionDone(true); // Ativa trava
-                setCurrentImage(IMAGES.alivio); // Mostra alívio
-                // Removido setTimeout: A imagem fica até clicar de novo.
+                // TRAVA NA IMAGEM DE ALÍVIO
+                setSessionDone(true);
+                setCurrentImage(IMAGES.alivio);
+                // REMOVIDO: setTimeout para voltar para inicio. Fica em alivio pra sempre.
             };
 
             const buyUpgrade = (upgrade) => {
@@ -526,6 +537,7 @@
                         </div>
 
                         <div className="relative w-64 h-64 flex items-center justify-center mb-6">
+                            {/* RHYTHM RINGS */}
                             {rhythmActiveState && (
                                 <>
                                     <div className="absolute rounded-full border-white/40 z-0 shadow-[0_0_30px_10px_rgba(255,255,255,0.2)]" style={{ width: '208px', height: '208px', borderWidth: '24px', boxSizing: 'border-box' }}></div>
